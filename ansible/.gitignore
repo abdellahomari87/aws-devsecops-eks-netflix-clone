@@ -58,3 +58,7 @@ ansible/roles/common/tasks/secrets.yml.bak
 .env
 *.pem
 *.key
+
+*.retry
+*.bak
+group_vars/*.local.yml
