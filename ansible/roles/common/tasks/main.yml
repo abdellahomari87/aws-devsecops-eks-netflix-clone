@@ -1,0 +1,40 @@
+---
+- name: Ensure Ansible remote tmp directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/tmp/.ansible-tmp", mode: "1777" }
+    - { path: "/root/.ansible/tmp", mode: "0700" }
+  become: true
+
+- name: Apt update
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Basic packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - wget
+      - gnupg
+      - lsb-release
+      - unzip
+      - jq
+    state: present
+
+- name: Install build tools on Jenkins host
+  ansible.builtin.apt:
+    name:
+      - git
+      - maven
+      - nodejs
+      - npm
+    state: present
+    update_cache: yes
+
+- import_tasks: secrets_from_localhost.yml
+  when: inventory_hostname in groups['cicd'] or inventory_hostname in groups['monitoring']

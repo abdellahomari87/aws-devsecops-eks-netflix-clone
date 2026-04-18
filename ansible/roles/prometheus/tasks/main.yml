@@ -1,0 +1,123 @@
+---
+- name: Create prometheus user
+  user:
+    name: prometheus
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0755"
+  loop:
+    - /etc/prometheus
+    - /data
+    - /etc/prometheus/consoles
+    - /etc/prometheus/console_libraries
+
+- name: Download Prometheus
+  get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: /tmp/prometheus.tar.gz
+    mode: "0644"
+
+- name: Extract Prometheus
+  unarchive:
+    src: /tmp/prometheus.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: Install binaries
+  copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: yes
+  loop:
+    - prometheus
+    - promtool
+
+- name: Install consoles
+  shell: |
+    rm -rf /etc/prometheus/consoles /etc/prometheus/console_libraries
+    mv /tmp/prometheus-{{ prometheus_version }}.linux-amd64/consoles /etc/prometheus/
+    mv /tmp/prometheus-{{ prometheus_version }}.linux-amd64/console_libraries /etc/prometheus/
+    chown -R prometheus:prometheus /etc/prometheus
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: "Prometheus config (targets: node_exporter + jenkins)"
+  copy:
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+    mode: "0644"
+    content: |
+      global:
+        scrape_interval: 15s
+
+      scrape_configs:
+        - job_name: "prometheus"
+          static_configs:
+            - targets: ["localhost:9090"]
+
+        - job_name: "node_exporter_cicd"
+          static_configs:
+            - targets: ["{{ hostvars[groups['cicd'][0]].ansible_host }}:9100"]
+
+        - job_name: "node_exporter_monitoring"
+          static_configs:
+            - targets: ["{{ hostvars[groups['monitoring'][0]].ansible_host }}:9100"]
+
+        - job_name: "jenkins"
+          metrics_path: "/prometheus"
+          static_configs:
+            - targets: ["{{ hostvars[groups['cicd'][0]].ansible_host }}:8080"]
+
+- name: Fix ownership
+  file:
+    path: /etc/prometheus
+    state: directory
+    owner: prometheus
+    group: prometheus
+    recurse: yes
+
+- name: Create systemd unit
+  copy:
+    dest: /etc/systemd/system/prometheus.service
+    content: |
+      [Unit]
+      Description=Prometheus
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=prometheus
+      Group=prometheus
+      Type=simple
+      Restart=on-failure
+      RestartSec=5s
+      ExecStart=/usr/local/bin/prometheus \
+        --config.file=/etc/prometheus/prometheus.yml \
+        --storage.tsdb.path=/data \
+        --web.console.templates=/etc/prometheus/consoles \
+        --web.console.libraries=/etc/prometheus/console_libraries \
+        --web.listen-address=0.0.0.0:9090 \
+        --web.enable-lifecycle
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable & start Prometheus
+  systemd:
+    name: prometheus
+    enabled: yes
+    state: started
+    daemon_reload: yes

@@ -1,0 +1,22 @@
+---
+- name: Install docker
+  apt:
+    name: docker.io
+    state: present
+
+- name: Enable & start docker
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: Add ubuntu to docker group
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+
+- name: Allow docker socket (lab only)
+  file:
+    path: /var/run/docker.sock
+    mode: "0666"

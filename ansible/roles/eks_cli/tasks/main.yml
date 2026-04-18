@@ -1,0 +1,107 @@
+---
+- name: Remove awscli v1 installed from apt if present
+  ansible.builtin.apt:
+    name: awscli
+    state: absent
+    purge: yes
+    autoremove: yes
+    update_cache: yes
+
+- name: Install required packages for AWS CLI v2
+  ansible.builtin.apt:
+    name:
+      - unzip
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Download AWS CLI v2 archive
+  ansible.builtin.get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    dest: /tmp/awscliv2.zip
+    mode: "0644"
+
+- name: Remove previous AWS CLI v2 extracted directory if present
+  ansible.builtin.file:
+    path: /tmp/aws
+    state: absent
+
+- name: Extract AWS CLI v2 archive
+  ansible.builtin.unarchive:
+    src: /tmp/awscliv2.zip
+    dest: /tmp
+    remote_src: true
+
+- name: Install or update AWS CLI v2
+  ansible.builtin.command: /tmp/aws/install --update
+  args:
+    creates: /usr/local/bin/aws
+
+- name: Check AWS CLI version
+  ansible.builtin.command: /usr/local/bin/aws --version
+  register: awscli_version
+  changed_when: false
+
+- name: Show AWS CLI version
+  ansible.builtin.debug:
+    var: awscli_version.stdout
+
+- name: Download kubectl
+  ansible.builtin.get_url:
+    url: https://dl.k8s.io/release/v1.35.0/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+
+- name: Check kubectl version
+  ansible.builtin.command: /usr/local/bin/kubectl version --client
+  register: kubectl_version
+  changed_when: false
+
+- name: Show kubectl version
+  ansible.builtin.debug:
+    var: kubectl_version.stdout_lines
+
+- name: Ensure .kube directory exists for jenkins
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.kube
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+
+- name: Remove old kubeconfig if present
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.kube/config
+    state: absent
+
+- name: Generate kubeconfig for jenkins user with AWS CLI v2
+  ansible.builtin.command: >
+    /usr/local/bin/aws eks update-kubeconfig
+    --region {{ aws_region }}
+    --name {{ eks_cluster_name }}
+    --kubeconfig /var/lib/jenkins/.kube/config
+  environment:
+    AWS_DEFAULT_REGION: "{{ aws_region }}"
+  become: true
+  become_user: jenkins
+
+- name: Ensure kubeconfig ownership is correct
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.kube/config
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
+
+- name: Test kubectl access
+  ansible.builtin.command: >
+    /usr/local/bin/kubectl get nodes --kubeconfig /var/lib/jenkins/.kube/config
+  become: true
+  become_user: jenkins
+  environment:
+    PATH: "/usr/local/bin:/usr/bin:/bin"
+  register: kubectl_nodes
+  changed_when: false
+
+- name: Show kubectl nodes output
+  ansible.builtin.debug:
+    var: kubectl_nodes.stdout_lines

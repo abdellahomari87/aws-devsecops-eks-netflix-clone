@@ -1,0 +1,32 @@
+---
+aws_region: us-east-1
+aws_secrets_prefix: "netflix-devsecops"
+
+eks_cluster_name: netflix-eks
+
+jenkins_http_port: 8080
+jenkins_admin_user: admin
+jenkins_plugin_manager_version: "2.14.0"
+
+jenkins_plugins:
+  - prometheus
+  - git
+  - workflow-aggregator
+  - configuration-as-code
+  - sonar
+  - dependency-check-jenkins-plugin
+  - antisamy-markup-formatter
+  - blueocean
+  - nodejs
+  - pipeline-maven
+  - ws-cleanup
+
+sonarqube_container_name: sonar
+sonarqube_host_port: 9000
+sonarqube_image: "sonarqube:community"
+
+jenkins_public_host: "{{ hostvars[groups['cicd'][0]].ansible_host }}"
+
+prometheus_version: "2.47.1"
+node_exporter_version: "1.6.1"
+grafana_admin_user: "admin"

@@ -1,0 +1,54 @@
+# ========================
+# Terraform
+# ========================
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+terraform/terraform.tfvars
+*.tfplan
+crash.log
+
+# ========================
+# Ansible
+# ========================
+ansible/group_vars/*.local.yml
+ansible/*.retry
+
+# ========================
+# Environment / Secrets
+# ========================
+.env
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.secret
+*.credentials
+
+# ========================
+# Kubernetes
+# ========================
+kubeconfig
+*.kubeconfig
+
+# ========================
+# Docker
+# ========================
+*.log
+docker-compose.override.yml
+
+# ========================
+# Jenkins
+# ========================
+.jenkins/
+secrets/
+
+# ========================
+# IDE / OS
+# ========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

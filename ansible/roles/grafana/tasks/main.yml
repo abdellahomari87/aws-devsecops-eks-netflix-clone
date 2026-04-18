@@ -1,0 +1,77 @@
+---
+- name: Install deps
+  apt:
+    name:
+      - apt-transport-https
+      - software-properties-common
+    state: present
+    update_cache: yes
+
+- name: Add Grafana GPG
+  shell: |
+    wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Add Grafana repo
+  apt_repository:
+    repo: "deb https://packages.grafana.com/oss/deb stable main"
+    state: present
+    filename: grafana
+
+- name: Install Grafana
+  apt:
+    name: grafana
+    state: present
+    update_cache: yes
+
+- name: Assert Grafana secret is available from localhost
+  assert:
+    that:
+      - hostvars['localhost'].grafana_admin_password is defined
+    fail_msg: "Le secret Grafana n'est pas disponible depuis localhost"
+
+- name: Store Grafana secrets env file
+  ansible.builtin.copy:
+    dest: /etc/grafana/grafana-secrets.env
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      GF_SECURITY_ADMIN_USER={{ grafana_admin_user }}
+      GF_SECURITY_ADMIN_PASSWORD={{ hostvars['localhost'].grafana_admin_password }}
+  become: true
+  no_log: true
+
+- name: Ensure Grafana systemd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/grafana-server.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Add EnvironmentFile to Grafana service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/grafana-server.service.d/override.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Service]
+      EnvironmentFile=/etc/grafana/grafana-secrets.env
+  become: true
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: Enable & start Grafana
+  ansible.builtin.systemd:
+    name: grafana-server
+    enabled: yes
+    state: restarted
+  become: true

@@ -1,0 +1,114 @@
+jenkins:
+  systemMessage: "Managed by Ansible (JCasC)"
+  numExecutors: 2
+  mode: NORMAL
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "{{ jenkins_admin_user }}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "JAVA_HOME"
+            value: "/usr/lib/jvm/java-21-openjdk-amd64"
+          - key: "MAVEN_HOME"
+            value: "/usr/share/maven"
+          - key: "SONAR_HOST_URL"
+            value: "http://localhost:{{ sonarqube_host_port }}"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              description: "SonarQube token (managed by Ansible)"
+              secret: "${SONAR_TOKEN}"
+
+          - usernamePassword:
+              scope: GLOBAL
+              id: "dockerhub-creds"
+              description: "DockerHub credentials"
+              username: "${DOCKERHUB_USER}"
+              password: "${DOCKERHUB_TOKEN}"
+
+          - string:
+              scope: GLOBAL
+              id: "nvd-api-key"
+              description: "NVD API key"
+              secret: "${NVD_API_KEY}"
+
+          - string:
+              scope: GLOBAL
+              id: "tmdb-api-key"
+              description: "TMDB API key"
+              secret: "${TMDB_API_KEY}"
+
+unclassified:
+  location:
+    url: "http://{{ ansible_host }}:8080/"
+    adminAddress: "admin@example.local"
+
+  sonarGlobalConfiguration:
+    buildWrapperEnabled: true
+    installations:
+      - name: "SonarQube"
+        serverUrl: "http://localhost:{{ sonarqube_host_port }}"
+        credentialsId: "sonar-token"
+
+  scmGit:
+    createAccountBasedOnEmail: false
+    globalConfigName: "Jenkins"
+    globalConfigEmail: "jenkins@local.dev"
+
+tool:
+  git:
+    installations:
+      - name: "DefaultGit"
+        home: "/usr/bin/git"
+
+  maven:
+    installations:
+      - name: "Maven3"
+        home: "/usr/share/maven"
+
+  sonarRunnerInstallation:
+    installations:
+      - name: "SonarScanner"
+        properties:
+          - installSource:
+              installers:
+                - sonarRunnerInstaller:
+                    id: "8.0.1.6346"
+
+  nodejs:
+    installations:
+      - name: "Node18"
+        properties:
+          - installSource:
+              installers:
+                - nodeJSInstaller:
+                    id: "18.20.4"
+
+  jdk:
+    installations:
+      - name: "jdk21"
+        home: "/usr/lib/jvm/java-21-openjdk-amd64"
+
+  dependency-check:
+    installations:
+      - name: "DependencyCheck"
+        properties:
+          - installSource:
+              installers:
+                - dependencyCheckInstaller:
+                    id: "12.1.0"

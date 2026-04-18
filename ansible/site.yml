@@ -1,0 +1,23 @@
+---    
+- name: Base + CICD server
+  hosts: cicd
+  become: true
+  vars:
+    ansible_remote_tmp: /tmp/.ansible-tmp
+  roles:
+    - common
+    - docker
+    - sonarqube_docker
+    - jenkins
+    - trivy
+    - eks_cli
+    - node_exporter
+
+- name: Monitoring server
+  hosts: monitoring
+  become: true
+  roles:
+    - common
+    - prometheus
+    - grafana
+    - node_exporter

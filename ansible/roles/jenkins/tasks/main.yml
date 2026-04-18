@@ -1,0 +1,281 @@
+- name: Ensure apt keyrings dir exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Jenkins repo key (2026)
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+    dest: /etc/apt/keyrings/jenkins-keyring.asc
+    mode: "0644"
+
+- name: Add Jenkins repo
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+    filename: jenkins
+
+- name: Apt update after adding Jenkins repo
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Jenkins
+  ansible.builtin.apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+
+# IMPORTANT : stop avant bootstrap
+- name: Stop Jenkins before bootstrap
+  ansible.builtin.systemd:
+    name: jenkins
+    state: stopped
+
+- name: Disable Jenkins setup wizard
+  ansible.builtin.lineinfile:
+    path: /etc/default/jenkins
+    regexp: '^JAVA_ARGS='
+    line: 'JAVA_ARGS="-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false"'
+    create: yes
+
+- name: Ensure init.groovy.d exists
+  ansible.builtin.file:
+    path: /var/lib/jenkins/init.groovy.d
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+
+- name: Create admin user bootstrap script
+  ansible.builtin.copy:
+    dest: /var/lib/jenkins/init.groovy.d/01-create-admin.groovy
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+    content: |
+      import jenkins.model.*
+      import hudson.security.*
+
+      def instance = Jenkins.getInstance()
+
+      // Security realm
+      def hudsonRealm = new HudsonPrivateSecurityRealm(false)
+      if (hudsonRealm.getUser("{{ jenkins_admin_user }}") == null) {
+        hudsonRealm.createAccount("{{ jenkins_admin_user }}",{{ hostvars['localhost'].jenkins_admin_password }})
+      }
+      instance.setSecurityRealm(hudsonRealm)
+
+      // Authorization
+      def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+      strategy.setAllowAnonymousRead(false)
+      instance.setAuthorizationStrategy(strategy)
+
+      instance.save()
+
+- name: Stop Jenkins before installing plugins
+  ansible.builtin.systemd:
+    name: jenkins
+    state: stopped
+
+- name: Download Jenkins plugin installation manager jar
+  ansible.builtin.get_url:
+    url: "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/{{ jenkins_plugin_manager_version }}/jenkins-plugin-manager-{{ jenkins_plugin_manager_version }}.jar"
+    dest: /usr/local/bin/jenkins-plugin-manager.jar
+    mode: "0644"
+
+- name: Build plugins list
+  ansible.builtin.set_fact:
+    jenkins_plugins_str: "{{ jenkins_plugins | join(' ') }}"
+
+- name: Ensure Java JDK is installed
+  ansible.builtin.apt:
+    name: openjdk-21-jdk
+    state: present
+    update_cache: yes
+    
+- name: Install Jenkins plugins (using plugin manager jar)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    java -jar /usr/local/bin/jenkins-plugin-manager.jar \
+      --war /usr/share/java/jenkins.war \
+      --plugin-download-directory /var/lib/jenkins/plugins \
+      --plugins "{{ jenkins_plugins_str }}"
+    chown -R jenkins:jenkins /var/lib/jenkins/plugins
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: Remove potential broken plugin files (tmp/lock)
+  ansible.builtin.file:
+    path: "/var/lib/jenkins/plugins/{{ item }}"
+    state: absent
+  loop:
+    - ".lock"
+  become: yes
+
+- name: Clean Jenkins webroot cache (safe)
+  ansible.builtin.file:
+    path: /var/cache/jenkins/war
+    state: absent
+  become: yes
+  
+- name: Ensure correct ownership on JENKINS_HOME
+  ansible.builtin.file:
+    path: /var/lib/jenkins
+    state: directory
+    owner: jenkins
+    group: jenkins
+    recurse: yes
+
+- name: Get JAVA_HOME from java binary
+  ansible.builtin.shell: |
+    set -euo pipefail
+    dirname "$(dirname "$(readlink -f /usr/bin/java)")"
+  args:
+    executable: /bin/bash
+  register: java_home
+  changed_when: false
+
+- name: Set JAVA_HOME for Jenkins
+  ansible.builtin.lineinfile:
+    path: /etc/default/jenkins
+    regexp: '^JAVA_HOME='
+    line: "JAVA_HOME={{ java_home.stdout }}"
+
+# --- Read Sonar token (created by role sonarqube_docker) ---
+- name: Read SonarQube token from file
+  ansible.builtin.slurp:
+    src: /root/sonarqube_jenkins_token.txt
+  register: sonar_token_file
+  no_log: true
+
+- name: Set Sonar token fact
+  ansible.builtin.set_fact:
+    sonarqube_token: "{{ (sonar_token_file.content | b64decode).strip() }}"
+  no_log: true
+
+- name: Assert Jenkins secrets are available from localhost
+  assert:
+    that:
+      - sonarqube_token is defined
+      - hostvars['localhost'].jenkins_admin_password is defined
+      - hostvars['localhost'].sonarqube_admin_password is defined
+      - hostvars['localhost'].dockerhub_credentials is defined
+      - hostvars['localhost'].dockerhub_credentials.username is defined
+      - hostvars['localhost'].dockerhub_credentials.token is defined
+      - hostvars['localhost'].nvd_api_key is defined
+      - hostvars['localhost'].tmdb_api_key is defined
+      - hostvars['localhost'].sonarqube_webhook_secret is defined
+    fail_msg: "Secrets Jenkins/Sonar/DockerHub/NVD/TMDB indisponibles depuis localhost"
+
+# --- Store token in a root-only env file loaded by systemd ---
+- name: Store Jenkins secrets env file
+  ansible.builtin.copy:
+    dest: /etc/jenkins-secrets.env
+    content: |
+      SONAR_TOKEN={{ sonarqube_token }}
+      JENKINS_ADMIN_PASSWORD={{ hostvars['localhost'].jenkins_admin_password }}
+      DOCKERHUB_USER={{ hostvars['localhost'].dockerhub_credentials.username }}
+      DOCKERHUB_TOKEN={{ hostvars['localhost'].dockerhub_credentials.token }}
+      NVD_API_KEY={{ hostvars['localhost'].nvd_api_key }}
+      TMDB_API_KEY={{ hostvars['localhost'].tmdb_api_key }}
+      SONARQUBE_WEBHOOK_SECRET={{ hostvars['localhost'].sonarqube_webhook_secret }}
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart Jenkins
+
+# --- Prepare JCasC directory and config ---
+- name: Create JCasC directory
+  ansible.builtin.file:
+    path: /var/lib/jenkins/casc
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+
+- name: Template JCasC config
+  ansible.builtin.template:
+    src: jenkins.yaml.j2
+    dest: /var/lib/jenkins/casc/jenkins.yaml
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+  notify: Restart Jenkins
+
+# --- Systemd override: load env file + point CASC_JENKINS_CONFIG ---
+- name: Create systemd override directory for Jenkins
+  ansible.builtin.file:
+    path: /etc/systemd/system/jenkins.service.d
+    state: directory
+    mode: "0755"
+
+- name: Configure Jenkins systemd overrides for JCasC + secrets
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/jenkins.service.d/override.conf
+    content: |
+      [Service]
+      EnvironmentFile=-/etc/jenkins-secrets.env
+      Environment="CASC_JENKINS_CONFIG=/var/lib/jenkins/casc/jenkins.yaml"
+    mode: "0644"
+  notify: Restart Jenkins
+
+- name: Flush handlers now
+  meta: flush_handlers
+
+- name: Mark Jenkins as configured (disable setup/upgrade wizard)
+  ansible.builtin.copy:
+    dest: /var/lib/jenkins/jenkins.install.UpgradeWizard.state
+    content: "2.0\n"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+
+- name: Set Jenkins last executed version (prevents install wizard prompts)
+  ansible.builtin.copy:
+    dest: /var/lib/jenkins/jenkins.install.InstallUtil.lastExecVersion
+    content: "2.0\n"
+    owner: jenkins
+    group: jenkins
+    mode: "0644"
+
+- name: Write Jenkins secrets env file
+  ansible.builtin.copy:
+    dest: /etc/jenkins-secrets.env
+    content: |
+      SONAR_TOKEN={{ sonarqube_token }}
+      JENKINS_ADMIN_PASSWORD={{ hostvars['localhost'].jenkins_admin_password }}
+      DOCKERHUB_USER={{ hostvars['localhost'].dockerhub_credentials.username }}
+      DOCKERHUB_TOKEN={{ hostvars['localhost'].dockerhub_credentials.token }}
+      NVD_API_KEY={{ hostvars['localhost'].nvd_api_key }}
+      TMDB_API_KEY={{ hostvars['localhost'].tmdb_api_key }}
+      SONARQUBE_WEBHOOK_SECRET={{ hostvars['localhost'].sonarqube_webhook_secret }}
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Start Jenkins (with logs on failure)
+  block:
+    - name: Start Jenkins
+      ansible.builtin.systemd:
+        name: jenkins
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+
+  rescue:
+    - name: Jenkins status
+      ansible.builtin.shell: |
+        systemctl status jenkins --no-pager -l || true
+        journalctl -u jenkins -n 200 --no-pager || true
+        tail -n 200 /var/log/jenkins/jenkins.log || true
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Fail with hint
+      ansible.builtin.fail:
+        msg: "Jenkins failed to start. Logs printed above."

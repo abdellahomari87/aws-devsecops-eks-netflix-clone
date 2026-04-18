@@ -1,0 +1,126 @@
+---
+- name: Kernel params for SonarQube (Elasticsearch)
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: "vm.max_map_count", value: "262144" }
+    - { name: "fs.file-max",      value: "131072" }
+
+- name: Ensure docker is running (safety)
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Run SonarQube container with required limits
+  shell: |
+    docker rm -f {{ sonarqube_container_name }} >/dev/null 2>&1 || true
+    docker run -d --name {{ sonarqube_container_name }} \
+      -p {{ sonarqube_host_port }}:9000 \
+      --ulimit nofile=65536:65536 \
+      --ulimit nproc=4096:4096 \
+      {{ sonarqube_image }}
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+# Attendre que l'API Sonar soit réellement UP (pas juste le port ouvert)
+- name: Wait for SonarQube API status UP
+  uri:
+    url: "http://localhost:{{ sonarqube_host_port }}/api/system/status"
+    method: GET
+    return_content: yes
+    status_code: 200
+  register: sonar_status
+  retries: 90
+  delay: 5
+  until: sonar_status.json.status is defined and sonar_status.json.status == "UP"
+
+# Changement du password admin, idempotent (ne plante pas si déjà changé)
+- name: Change SonarQube admin password (idempotent)
+  uri:
+    url: "http://localhost:{{ sonarqube_host_port }}/api/users/change_password"
+    method: POST
+    user: "admin"
+    password: "admin"
+    force_basic_auth: yes
+    body_format: form-urlencoded
+    body:
+      login: "admin"
+      previousPassword: "admin"
+      password: "{{ hostvars['localhost'].sonarqube_admin_password }}"
+    status_code: [200, 204, 400, 401]
+    return_content: yes
+  register: sonar_pwd_change
+  no_log: true
+
+- name: List existing SonarQube webhooks
+  ansible.builtin.uri:
+    url: "http://localhost:{{ sonarqube_host_port }}/api/webhooks/list"
+    method: GET
+    user: "admin"
+    password: "{{ hostvars['localhost'].sonarqube_admin_password }}"
+    force_basic_auth: true
+    return_content: yes
+    status_code: 200
+  register: sonar_webhooks
+  no_log: true
+
+- name: Create Jenkins webhook in SonarQube if missing
+  ansible.builtin.uri:
+    url: "http://localhost:{{ sonarqube_host_port }}/api/webhooks/create"
+    method: POST
+    user: "admin"
+    password: "{{ hostvars['localhost'].sonarqube_admin_password }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      name: "jenkins"
+      url: "http://{{ jenkins_public_host }}:{{ jenkins_http_port }}/sonarqube-webhook/"
+      secret: "{{ hostvars['localhost'].sonarqube_webhook_secret }}"
+    status_code: 200
+    return_content: yes
+  when: >
+    (sonar_webhooks.json.webhooks | default([]) |
+     selectattr('name', 'equalto', 'jenkins') | list | length) == 0
+  no_log: true
+
+# Interprétation sûre : on ne fail que si c'est un vrai problème
+- name: SonarQube password change result (safe)
+  debug:
+    msg: >-
+      Sonar password change call returned status={{ sonar_pwd_change.status }}.
+      (200/204=OK, 401=already changed, 400=policy/validation)
+  failed_when: false
+
+- name: Check if token file already exists
+  ansible.builtin.stat:
+    path: /root/sonarqube_jenkins_token.txt
+  register: sonar_token_file_stat
+
+- name: Generate SonarQube token for Jenkins (first run only)
+  ansible.builtin.uri:
+    url: "http://localhost:9000/api/user_tokens/generate"
+    method: POST
+    user: "admin"
+    password: "{{ hostvars['localhost'].sonarqube_admin_password }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      name: "jenkins-token"
+    status_code: 200
+    return_content: yes
+  register: sonar_token_resp
+  when: not sonar_token_file_stat.stat.exists
+  no_log: true
+
+- name: Save SonarQube token locally (first creation only)
+  ansible.builtin.copy:
+    dest: /root/sonarqube_jenkins_token.txt
+    content: "{{ sonar_token_resp.json.token }}\n"
+    mode: "0600"
+  when: not sonar_token_file_stat.stat.exists
+  no_log: true
