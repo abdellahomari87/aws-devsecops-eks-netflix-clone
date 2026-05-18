@@ -171,21 +171,3 @@ Collecte des métriques :
 ## Grafana
 
 Visualisation des métriques et dashboards.
-
----
-
-# 📂 Structure du Projet
-
-```bash
-terraform/           # Infrastructure AWS + Secrets Manager
-ansible/             # Configuration Jenkins / Monitoring / Security
-kubernetes/
-  deployment.yml
-  service.yml
-  networkpolicy.yml
-  tests/
-    network-policy/
-
-Dockerfile
-Jenkinsfile
-README.md
