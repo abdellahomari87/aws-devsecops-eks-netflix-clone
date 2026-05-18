@@ -1,73 +1,59 @@
-# 🎬 Netflix Clone – Plateforme DevSecOps Complète sur AWS
+# ☁️ AWS DevSecOps EKS Netflix Clone
 
 ## 📌 Description
 
-Ce projet met en œuvre une plateforme DevSecOps complète et sécurisée pour le déploiement d’une application type Netflix sur AWS.
+Ce repository contient toute l’infrastructure cloud, l’automatisation DevSecOps, la pipeline CI/CD, le monitoring et les intégrations de sécurité AWS utilisées pour déployer et sécuriser l’application Netflix Clone sur AWS.
 
-Le projet original reposait principalement sur des opérations manuelles dans la console AWS.  
-Cette version a été entièrement réarchitecturée afin d’appliquer une approche moderne :
-
-- Infrastructure as Code
-- Automation First
-- Security by Design
-- CI/CD sécurisé
-- Kubernetes Security
-- Observabilité & conformité AWS
-
-L’objectif principal était de réduire au maximum les opérations manuelles et de rendre toute l’infrastructure reproductible, sécurisée et automatisée.
+Le projet a été conçu afin de moderniser un déploiement applicatif classique vers une plateforme DevSecOps proche d’un environnement production, en utilisant l’Infrastructure as Code, Kubernetes, l’automatisation cloud et les bonnes pratiques de sécurité.
 
 ---
 
-# 🚀 Industrialisation & Automatisation du Projet
+# 🎯 Objectifs du Projet
 
-## ✅ Améliorations apportées
-
-- Infrastructure AWS entièrement provisionnée avec Terraform
-- Configuration automatisée avec Ansible
-- Jenkins entièrement configuré via JCasC (Jenkins Configuration as Code)
-- Réduction maximale des clics manuels dans AWS
-- Déploiement Kubernetes automatisé sur Amazon EKS
-- Gestion centralisée des secrets avec AWS Secrets Manager
-- Pipeline CI/CD entièrement automatisé
-- Sécurité intégrée dès la phase de build (DevSecOps / Shift Left)
-- Validation automatique des politiques réseau Kubernetes
-- Architecture reproductible proche d’un environnement production réel
+- Automatiser le provisionnement de l’infrastructure AWS
+- Déployer des applications de manière sécurisée sur Amazon EKS
+- Implémenter une pipeline CI/CD complète
+- Appliquer les pratiques DevSecOps et Shift-Left Security
+- Intégrer les services de sécurité AWS
+- Mettre en place la sécurité runtime Kubernetes
+- Construire une architecture cloud proche d’un environnement production
+- Réduire au maximum les opérations manuelles dans la console AWS
 
 ---
 
-# 🏗️ Architecture
+# 🏗️ Vue d’Ensemble de l’Architecture
 
-## ☁️ Cloud & Infrastructure
+## ☁️ Plateforme Cloud
 
 - AWS
-- Amazon EKS (Kubernetes)
-- EC2
-- IAM
-- VPC
-- Security Groups
-- EBS Encryption
-- VPC Flow Logs
 
-## ⚙️ Infrastructure as Code & Automation
+## ☸️ Orchestration de Conteneurs
+
+- Amazon EKS
+- Kubernetes
+
+## ⚙️ Infrastructure as Code
 
 - Terraform
+
+## 🤖 Automatisation & Configuration
+
 - Ansible
 - Jenkins Configuration as Code (JCasC)
 
-## 🚀 CI/CD & Containerisation
+## 🚀 CI/CD
 
 - Jenkins
 - Docker
 - DockerHub
-- Kubernetes
 
-## 📊 Monitoring & Observabilité
+## 📊 Monitoring
 
 - Prometheus
 - Grafana
 - Node Exporter
 
-## 🔐 Sécurité & Conformité
+## 🔐 Sécurité
 
 ### Sécurité AWS
 
@@ -78,6 +64,7 @@ L’objectif principal était de réduire au maximum les opérations manuelles e
 - IAM Least Privilege
 - IMDSv2 activé
 - Chiffrement EBS
+- VPC Flow Logs
 
 ### Sécurité DevSecOps
 
@@ -88,86 +75,137 @@ L’objectif principal était de réduire au maximum les opérations manuelles e
 ### Sécurité Kubernetes
 
 - NetworkPolicy
-- runAsNonRoot
-- readOnlyRootFilesystem
-- allowPrivilegeEscalation: false
-- seccompProfile: RuntimeDefault
-- CPU & Memory Limits
-- Liveness & Readiness Probes
+- Hardening des Pods
+- Bonnes pratiques de sécurité runtime
 
 ---
 
-# ⚙️ Fonctionnalités Principales
+# 🚀 Automatisation de l’Infrastructure
 
-## 🚀 Pipeline CI/CD
+L’infrastructure est entièrement provisionnée avec Terraform.
 
-Le pipeline Jenkins automatise :
+## Composants Terraform
+
+- VPC
+- Subnets
+- Security Groups
+- Instances EC2
+- IAM Roles & Policies
+- Amazon EKS
+- Secrets Manager
+- Infrastructure de monitoring
+
+---
+
+# 🤖 Automatisation Ansible
+
+Ansible est utilisé pour automatiser :
+
+- Installation Jenkins
+- Installation Docker
+- Configuration monitoring
+- Installation SonarQube
+- Configuration Prometheus & Grafana
+- Jenkins Configuration as Code (JCasC)
+- Configuration sécurité
+
+---
+
+# ⚙️ Jenkins & CI/CD
+
+La pipeline Jenkins automatise :
 
 - Build de l’application
-- Analyse statique avec SonarQube
-- Scan sécurité avec Trivy
-- Scan dépendances OWASP
-- Build Docker
-- Push Docker image
-- Déploiement automatique sur EKS
-- Validation automatique des politiques réseau Kubernetes
+- Analyse statique du code
+- Scan sécurité
+- Build des images Docker
+- Push des images Docker
+- Déploiement Kubernetes
+- Validation automatique des contrôles sécurité
 
 ---
 
 # 🔐 Gestion Sécurisée des Secrets
 
-Tous les secrets sont stockés dans AWS Secrets Manager.
+Les secrets sont stockés de manière sécurisée avec AWS Secrets Manager.
 
-## ✅ Secrets gérés
+## Secrets gérés
 
-- DockerHub Token
+- Credentials DockerHub
+- Tokens SonarQube
 - API Keys
-- Jenkins Password
-- SonarQube Password
-- Grafana Password
-- SonarQube Webhook Secret
+- Credentials Jenkins
+- Credentials Grafana
+- Secrets Webhook
 
-## ✅ Sécurité mise en place
+## Fonctionnalités de sécurité
 
-- Création des secrets via Terraform
-- Lecture dynamique via IAM Roles
-- Aucune exposition des secrets dans Git
-- Injection runtime avec Ansible
+- Création des secrets avec Terraform
+- Accès basé sur IAM Roles
+- Injection runtime des secrets
+- Aucun secret exposé dans Git
 
 ---
 
 # ☸️ Sécurité Kubernetes
 
-## ✅ Hardening des Pods
+Le projet applique plusieurs bonnes pratiques Kubernetes Security :
 
-- Exécution non-root
-- Système de fichiers en lecture seule
-- Désactivation de l’élévation de privilèges
-- Profil seccomp RuntimeDefault
-- Limitation des ressources CPU/Mémoire
+- `runAsNonRoot`
+- `readOnlyRootFilesystem`
+- `allowPrivilegeEscalation: false`
+- `seccompProfile: RuntimeDefault`
+- CPU & Memory limits
+- Liveness & Readiness probes
+- Isolation NetworkPolicy
 
-## ✅ Validation des politiques réseau
+---
+
+# 🌐 Kubernetes Network Policies
 
 Des tests automatisés valident :
 
 - Le trafic autorisé
 - Le trafic bloqué
 - La résolution DNS
-- L’isolation réseau Kubernetes
+- L’isolation des Pods
+- La communication sécurisée entre namespaces
 
 ---
 
-# 📊 Monitoring
+# 📊 Stack de Monitoring
 
 ## Prometheus
 
-Collecte des métriques :
+Utilisé pour collecter :
 
-- Jenkins
-- Instances EC2
-- Infrastructure système
-- Kubernetes
+- Métriques Jenkins
+- Métriques Kubernetes
+- Métriques EC2
+- Métriques système
 
 ## Grafana
 
-Visualisation des métriques et dashboards.
+Utilisé pour :
+
+- Dashboards
+- Visualisation infrastructure
+- Alertes monitoring
+
+---
+
+# 📂 Structure du Repository
+
+terraform/
+ansible/
+monitoring/
+
+Jenkinsfile
+README-english.md
+README-français.md
+
+Repository Associé
+
+Repository contenant le code source de l’application :
+
+👉 https://github.com/abdellahomari87/Netflix-clone-abdellah
