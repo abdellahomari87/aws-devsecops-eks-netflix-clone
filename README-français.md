@@ -1,161 +1,191 @@
-# 🎬 Netflix Clone – DevSecOps Project (AWS + EKS + CI/CD + Security)
+# 🎬 Netflix Clone – Plateforme DevSecOps Complète sur AWS
 
 ## 📌 Description
 
-Ce projet met en œuvre une architecture **DevSecOps complète et sécurisée** pour le déploiement d’une application type Netflix sur AWS, avec :
+Ce projet met en œuvre une plateforme DevSecOps complète et sécurisée pour le déploiement d’une application type Netflix sur AWS.
 
-* Infrastructure as Code (Terraform)
-* CI/CD automatisé (Jenkins)
-* Sécurité intégrée (AWS + Kubernetes)
-* Gestion sécurisée des secrets (AWS Secrets Manager)
-* Monitoring et validation de sécurité automatisée
+Le projet original reposait principalement sur des opérations manuelles dans la console AWS.  
+Cette version a été entièrement réarchitecturée afin d’appliquer une approche moderne :
 
----
+- Infrastructure as Code
+- Automation First
+- Security by Design
+- CI/CD sécurisé
+- Kubernetes Security
+- Observabilité & conformité AWS
 
-## 🏗️ Architecture
-
-* **Cloud** : AWS
-* **Orchestration** : Amazon EKS (Kubernetes)
-* **CI/CD** : Jenkins
-* **IaC** : Terraform
-* **Configuration** : Ansible
-* **Containerisation** : Docker
-* **Monitoring** : Prometheus + Grafana
-* **Gestion des secrets** : AWS Secrets Manager
-* **Sécurité** :
-
-  * AWS GuardDuty
-  * AWS Security Hub
-  * AWS Config
-  * AWS CloudTrail
-  * Trivy (scan images)
-  * OWASP Dependency Check
-  * SonarQube (analyse statique)
+L’objectif principal était de réduire au maximum les opérations manuelles et de rendre toute l’infrastructure reproductible, sécurisée et automatisée.
 
 ---
 
-## ⚙️ Fonctionnalités principales
+# 🚀 Industrialisation & Automatisation du Projet
 
-### 🚀 CI/CD Pipeline
+## ✅ Améliorations apportées
 
-* Build de l’application
-* Analyse de code (SonarQube)
-* Scan sécurité (Trivy, OWASP)
-* Build & push Docker image
-* Déploiement automatique sur EKS
-* Tests de sécurité réseau automatisés (NetworkPolicy)
-
----
-
-### 🔐 Gestion sécurisée des secrets
-
-* Tous les secrets sont stockés dans **AWS Secrets Manager**
-* Création des secrets via **Terraform**
-* Accès aux secrets via **IAM Role attaché à l’instance Jenkins**
-* Lecture des secrets dans **Ansible (runtime)** → aucune exposition dans Git
-* Exemples de secrets gérés :
-
-  * DockerHub Token
-  * API keys (NVD, TMDB)
-  * Mots de passe Jenkins / SonarQube / Grafana
-  * Webhook secret SonarQube
+- Infrastructure AWS entièrement provisionnée avec Terraform
+- Configuration automatisée avec Ansible
+- Jenkins entièrement configuré via JCasC (Jenkins Configuration as Code)
+- Réduction maximale des clics manuels dans AWS
+- Déploiement Kubernetes automatisé sur Amazon EKS
+- Gestion centralisée des secrets avec AWS Secrets Manager
+- Pipeline CI/CD entièrement automatisé
+- Sécurité intégrée dès la phase de build (DevSecOps / Shift Left)
+- Validation automatique des politiques réseau Kubernetes
+- Architecture reproductible proche d’un environnement production réel
 
 ---
 
-### 🔐 Sécurité AWS
+# 🏗️ Architecture
 
-* IMDSv2 activé
-* Volumes EBS chiffrés
-* VPC Flow Logs
-* GuardDuty activé
-* Security Hub (AWS Best Practices)
-* CloudTrail (audit des appels API)
-* AWS Config (compliance tracking)
+## ☁️ Cloud & Infrastructure
+
+- AWS
+- Amazon EKS (Kubernetes)
+- EC2
+- IAM
+- VPC
+- Security Groups
+- EBS Encryption
+- VPC Flow Logs
+
+## ⚙️ Infrastructure as Code & Automation
+
+- Terraform
+- Ansible
+- Jenkins Configuration as Code (JCasC)
+
+## 🚀 CI/CD & Containerisation
+
+- Jenkins
+- Docker
+- DockerHub
+- Kubernetes
+
+## 📊 Monitoring & Observabilité
+
+- Prometheus
+- Grafana
+- Node Exporter
+
+## 🔐 Sécurité & Conformité
+
+### Sécurité AWS
+
+- AWS GuardDuty
+- AWS Security Hub
+- AWS Config
+- AWS CloudTrail
+- IAM Least Privilege
+- IMDSv2 activé
+- Chiffrement EBS
+
+### Sécurité DevSecOps
+
+- Trivy
+- OWASP Dependency Check
+- SonarQube
+
+### Sécurité Kubernetes
+
+- NetworkPolicy
+- runAsNonRoot
+- readOnlyRootFilesystem
+- allowPrivilegeEscalation: false
+- seccompProfile: RuntimeDefault
+- CPU & Memory Limits
+- Liveness & Readiness Probes
 
 ---
 
-### ☸️ Sécurité Kubernetes
+# ⚙️ Fonctionnalités Principales
 
-* Pods exécutés en non-root (`runAsNonRoot`)
-* `readOnlyRootFilesystem: true`
-* `allowPrivilegeEscalation: false`
-* `seccompProfile: RuntimeDefault`
-* Limitation CPU/Mémoire
-* Health checks (`livenessProbe`, `readinessProbe`)
+## 🚀 Pipeline CI/CD
 
----
+Le pipeline Jenkins automatise :
 
-### 🌐 Sécurité réseau Kubernetes
-
-* Implémentation de **NetworkPolicy**
-* Tests automatisés dans la pipeline Jenkins :
-
-  * Client autorisé → accès OK
-  * Client bloqué → accès refusé
-* Validation via `curl` et `nslookup`
+- Build de l’application
+- Analyse statique avec SonarQube
+- Scan sécurité avec Trivy
+- Scan dépendances OWASP
+- Build Docker
+- Push Docker image
+- Déploiement automatique sur EKS
+- Validation automatique des politiques réseau Kubernetes
 
 ---
 
-## 📊 Monitoring
+# 🔐 Gestion Sécurisée des Secrets
 
-* Prometheus pour la collecte des métriques
-* Grafana pour la visualisation
-* Métriques collectées :
+Tous les secrets sont stockés dans AWS Secrets Manager.
 
-  * Jenkins
-  * Node Exporter (EC2)
-  * Infrastructure système
+## ✅ Secrets gérés
+
+- DockerHub Token
+- API Keys
+- Jenkins Password
+- SonarQube Password
+- Grafana Password
+- SonarQube Webhook Secret
+
+## ✅ Sécurité mise en place
+
+- Création des secrets via Terraform
+- Lecture dynamique via IAM Roles
+- Aucune exposition des secrets dans Git
+- Injection runtime avec Ansible
 
 ---
 
-## 🧪 Tests de sécurité automatisés
+# ☸️ Sécurité Kubernetes
 
-Le pipeline Jenkins valide automatiquement :
+## ✅ Hardening des Pods
 
-* Connectivité réseau autorisée
-* Blocage du trafic non autorisé
-* Résolution DNS contrôlée
+- Exécution non-root
+- Système de fichiers en lecture seule
+- Désactivation de l’élévation de privilèges
+- Profil seccomp RuntimeDefault
+- Limitation des ressources CPU/Mémoire
+
+## ✅ Validation des politiques réseau
+
+Des tests automatisés valident :
+
+- Le trafic autorisé
+- Le trafic bloqué
+- La résolution DNS
+- L’isolation réseau Kubernetes
 
 ---
 
-## 📂 Structure du projet
+# 📊 Monitoring
 
-```id="fr-struct"
+## Prometheus
+
+Collecte des métriques :
+
+- Jenkins
+- Instances EC2
+- Infrastructure système
+- Kubernetes
+
+## Grafana
+
+Visualisation des métriques et dashboards.
+
+---
+
+# 📂 Structure du Projet
+
+```bash
 terraform/           # Infrastructure AWS + Secrets Manager
-ansible/             # Configuration Jenkins / Prometheus / Grafana
-Kubernetes/
+ansible/             # Configuration Jenkins / Monitoring / Security
+kubernetes/
   deployment.yml
   service.yml
   networkpolicy.yml
   tests/
     network-policy/
+
 Dockerfile
 Jenkinsfile
-```
-
----
-
-## 🎯 Objectif
-
-Ce projet démontre une implémentation complète DevSecOps avec :
-
-* Sécurité intégrée dès le build (Shift Left)
-* Sécurité runtime (Kubernetes)
-* Gestion sécurisée des secrets (Secrets Manager)
-* Observabilité et audit AWS
-* Automatisation complète CI/CD
-
----
-
-## 📈 Résultat
-
-* Application déployée sur EKS
-* Pipeline CI/CD entièrement automatisé
-* Sécurité validée automatiquement
-* Architecture proche d’un environnement production
-
----
-
-## 👨‍💻 Auteur
-
-Projet réalisé dans une démarche avancée DevSecOps et Cloud Security.
+README.md
