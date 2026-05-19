@@ -151,11 +151,10 @@ Secrets are securely stored using AWS Secrets Manager.
 
 The project applies Kubernetes security best practices:
 
-- `runAsNonRoot`
-- `readOnlyRootFilesystem`
-- `allowPrivilegeEscalation: false`
-- `seccompProfile: RuntimeDefault`
-- CPU & Memory limits
+- runAsNonRoot
+- readOnlyRootFilesystem
+- allowPrivilegeEscalation: false
+- seccompProfile: RuntimeDefault
 - Liveness & Readiness probes
 - NetworkPolicy isolation
 
