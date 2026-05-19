@@ -26,7 +26,7 @@
     state: present
     update_cache: yes
 
-# IMPORTANT : stop avant bootstrap
+# stop avant bootstrap
 - name: Stop Jenkins before bootstrap
   ansible.builtin.systemd:
     name: jenkins
