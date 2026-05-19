@@ -179,7 +179,6 @@ Des tests automatisés valident :
 Utilisé pour collecter :
 
 - Métriques Jenkins
-- Métriques Kubernetes
 - Métriques EC2
 - Métriques système
 
