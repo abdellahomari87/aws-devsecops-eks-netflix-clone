@@ -155,7 +155,6 @@ Le projet applique plusieurs bonnes pratiques Kubernetes Security :
 - readOnlyRootFilesystem
 - allowPrivilegeEscalation: false
 - seccompProfile: RuntimeDefault
-- CPU & Memory limits
 - Liveness & Readiness probes
 - Isolation NetworkPolicy
 
