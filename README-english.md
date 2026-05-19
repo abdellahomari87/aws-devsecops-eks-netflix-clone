@@ -179,7 +179,6 @@ Automated tests validate:
 Used for metrics collection:
 
 - Jenkins metrics
-- Kubernetes metrics
 - EC2 metrics
 - System metrics
 
