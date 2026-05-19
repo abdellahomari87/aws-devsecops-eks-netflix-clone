@@ -27,7 +27,7 @@
     executable: /bin/bash
   changed_when: true
 
-# Attendre que l'API Sonar soit réellement UP (pas juste le port ouvert)
+# Attendre que l'API Sonar soit réellement UP
 - name: Wait for SonarQube API status UP
   uri:
     url: "http://localhost:{{ sonarqube_host_port }}/api/system/status"
@@ -39,7 +39,7 @@
   delay: 5
   until: sonar_status.json.status is defined and sonar_status.json.status == "UP"
 
-# Changement du password admin, idempotent (ne plante pas si déjà changé)
+# Changement du password admin, idempotent
 - name: Change SonarQube admin password (idempotent)
   uri:
     url: "http://localhost:{{ sonarqube_host_port }}/api/users/change_password"
@@ -88,7 +88,7 @@
      selectattr('name', 'equalto', 'jenkins') | list | length) == 0
   no_log: true
 
-# Interprétation sûre : on ne fail que si c'est un vrai problème
+on ne fail que si c'est un vrai problème
 - name: SonarQube password change result (safe)
   debug:
     msg: >-
